@@ -53,9 +53,11 @@ I understand why watchlists could be private by default. Some users may not want
 **Bug found while testing this fix:** `get_watchlist()` calls `entry.film.to_dict()`, but `Film` only declared a `db.relationship` (with `backref="film"`) for `CollectionEntry`, not `WatchlistEntry` — so `entry.film` didn't exist and `get_watchlist()` raised `AttributeError` any time it was called, regardless of sort order. No existing test caught this because none exercised `get_watchlist()` end-to-end. I added `watchlist_entries = db.relationship("WatchlistEntry", backref="film", lazy=True)` to `Film` in `models.py`, matching the existing `collection_entries` pattern, and added `test_get_watchlist_returns_newest_first` (mirroring `test_get_collection_returns_newest_first`) to cover both the sort order and this relationship.
 
 ## Comment 6 — Rebase
-**What conflicted:**
-**How I resolved it:**
-**How I verified no conflict remains:**
+**What conflicted:** While this PR was open, `refactor: migrate film IDs from integer to UUID` merged to `main`, changing `Film.id` (and every FK referencing it) from `db.Integer` to `db.String(36)`. I rebased `feature/watchlist` onto `main` with `git fetch origin && git rebase origin/main`. `models.py` conflicted directly: my branch still had the pre-refactor `WatchlistEntry` class (`user_id`/`film_id` as `db.Integer`-backed FKs) sitting alongside main's new UUID-based `Film`/`CollectionEntry`. Resolving the conflict by just taking main's side of the file silently dropped the `WatchlistEntry` class entirely, since it never existed on `main` — there was nothing on main's side for git to keep it against.
+
+**How I resolved it:** I re-added `WatchlistEntry` to `models.py` on top of main's post-refactor schema, updating `id`, `user_id`, and `film_id` to `db.String(36)` to match the new UUID convention (previously `film_id` was `db.Integer`). I also updated the two remaining docstrings that still described `film_id` as an `int` — one in `add_to_watchlist()` in `services/watchlist_service.py`, and one in the request-body comment for `POST /watchlist/<user_id>/add` in `routes/watchlist/watchlist.py` — so nothing in the branch still implied integer film IDs.
+
+**How I verified no conflict remains:** `git status` shows a clean rebase with no unresolved paths and no merge commits in `feature/watchlist`'s history (`git log --oneline --merges feature/watchlist` returns nothing, and `git merge-base feature/watchlist origin/main` equals `origin/main`'s tip). I then ran `pytest tests/ -v` — all 6 tests pass, including `test_get_watchlist_returns_newest_first`, which exercises `get_watchlist()` end-to-end and would fail immediately if the UUID plumbing were wrong (e.g. if `WatchlistEntry.film_id` still expected an integer, or if the `Film.watchlist_entries` relationship type mismatched).
 
 ## PR Description
 <!-- Written at the end — feature overview, design decisions, manual testing steps -->
