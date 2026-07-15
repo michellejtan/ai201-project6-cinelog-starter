@@ -79,6 +79,35 @@ def remove_from_watchlist(user_id, film_id):
     return True
 
 
+def set_watchlist_visibility(user_id, film_id, public=None):
+    """
+    Set (or toggle) the visibility of a watchlist entry.
+
+    Args:
+        user_id (str): UUID of the user.
+        film_id (str): UUID of the film.
+        public (bool, optional): The visibility to set. If omitted (None),
+            the entry's current visibility is toggled instead.
+
+    Returns:
+        WatchlistEntry: The updated entry.
+
+    Raises:
+        NotInWatchlistError: If the film is not in the user's watchlist.
+    """
+    entry = WatchlistEntry.query.filter_by(
+        user_id=user_id, film_id=film_id
+    ).first()
+    if entry is None:
+        raise NotInWatchlistError(
+            f"Film '{film_id}' is not in this user's watchlist"
+        )
+
+    entry.public = (not entry.public) if public is None else bool(public)
+    db.session.commit()
+    return entry
+
+
 def get_watchlist(user_id):
     """
     Return all films on a user's watchlist, sorted by date added (newest first).

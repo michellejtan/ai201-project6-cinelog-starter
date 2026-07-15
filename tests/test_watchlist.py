@@ -12,6 +12,7 @@ from services.watchlist_service import (
     add_to_watchlist,
     get_watchlist,
     remove_from_watchlist,
+    set_watchlist_visibility,
     AlreadyInWatchlistError,
     NotInWatchlistError,
 )
@@ -163,3 +164,41 @@ def test_remove_from_watchlist_not_present_raises(app, sample_user, sample_film)
     with app.app_context():
         with pytest.raises(NotInWatchlistError):
             remove_from_watchlist(user_id=sample_user, film_id=sample_film)
+
+
+# ── set_watchlist_visibility ──────────────────────────────────────────────────
+
+def test_set_watchlist_visibility_toggles_by_default(app, sample_user, sample_film):
+    """
+    Calling set_watchlist_visibility() without an explicit `public` value
+    should flip the entry's current visibility.
+    """
+    with app.app_context():
+        entry = add_to_watchlist(user_id=sample_user, film_id=sample_film)
+        assert entry.public is True
+
+        updated = set_watchlist_visibility(user_id=sample_user, film_id=sample_film)
+        assert updated.public is False
+
+        updated_again = set_watchlist_visibility(user_id=sample_user, film_id=sample_film)
+        assert updated_again.public is True
+
+
+def test_set_watchlist_visibility_sets_explicit_value(app, sample_user, sample_film):
+    """
+    Calling set_watchlist_visibility() with an explicit `public` value
+    should set the entry to that value regardless of its current state.
+    """
+    with app.app_context():
+        add_to_watchlist(user_id=sample_user, film_id=sample_film)
+
+        updated = set_watchlist_visibility(
+            user_id=sample_user, film_id=sample_film, public=False
+        )
+        assert updated.public is False
+
+        # Setting the same value again should be a no-op, not an error.
+        updated_again = set_watchlist_visibility(
+            user_id=sample_user, film_id=sample_film, public=False
+        )
+        assert updated_again.public is False

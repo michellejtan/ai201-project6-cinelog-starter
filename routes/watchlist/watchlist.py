@@ -9,6 +9,7 @@ from services.watchlist_service import (
     add_to_watchlist,
     get_watchlist,
     remove_from_watchlist,
+    set_watchlist_visibility,
     NotInWatchlistError,
 )
 from services.collection_service import FilmNotFoundError
@@ -52,5 +53,30 @@ def remove_film(user_id):
     try:
         remove_from_watchlist(user_id=user_id, film_id=data["film_id"])
         return jsonify({"message": "Removed from watchlist"}), 200
+    except NotInWatchlistError as e:
+        return jsonify({"error": str(e)}), 404
+
+
+@watchlist_bp.route("/<user_id>/visibility", methods=["PATCH"])
+def update_visibility(user_id):
+    """
+    PATCH /watchlist/<user_id>/visibility
+
+    Body: { "film_id": <uuid string>, "public": <bool> }
+
+    "public" is optional — if omitted, the entry's current visibility is
+    toggled instead of set to an explicit value.
+    """
+    data = request.get_json()
+    if not data or "film_id" not in data:
+        return jsonify({"error": "film_id is required"}), 400
+
+    try:
+        entry = set_watchlist_visibility(
+            user_id=user_id,
+            film_id=data["film_id"],
+            public=data.get("public"),
+        )
+        return jsonify(entry.to_dict()), 200
     except NotInWatchlistError as e:
         return jsonify({"error": str(e)}), 404
