@@ -138,6 +138,37 @@ def test_get_watchlist_returns_newest_first(app, sample_user):
         assert titles == ["Blade Runner", "Alien"]
 
 
+# ── User isolation (edge case beyond Comment 3's required tests) ────────────
+
+def test_get_watchlist_excludes_other_users_entries(app, sample_film):
+    """
+    get_watchlist() should only return entries belonging to the requested
+    user, even when other users have entries for the same film.
+
+    This is worth testing on its own because the happy-path, duplicate, and
+    nonexistent-film tests required by Comment 3 all operate on a single
+    user. None of them would catch a query missing its `user_id` filter
+    (e.g. a regression that returns every WatchlistEntry in the table) since
+    a single-user test can't distinguish "filtered to this user" from
+    "returned everything." Two users saving the same film is the smallest
+    case that actually exercises the filter.
+    """
+    with app.app_context():
+        user_a = User(username="alice", email="alice@example.com")
+        user_b = User(username="bob", email="bob@example.com")
+        db.session.add_all([user_a, user_b])
+        db.session.commit()
+
+        add_to_watchlist(user_id=user_a.id, film_id=sample_film)
+        add_to_watchlist(user_id=user_b.id, film_id=sample_film)
+
+        watchlist_a = get_watchlist(user_a.id)
+        assert len(watchlist_a) == 1
+
+        watchlist_b = get_watchlist(user_b.id)
+        assert len(watchlist_b) == 1
+
+
 # ── remove_from_watchlist ─────────────────────────────────────────────────────
 
 def test_remove_from_watchlist_deletes_entry(app, sample_user, sample_film):
