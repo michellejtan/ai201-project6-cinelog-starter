@@ -92,6 +92,26 @@ Adds a watchlist feature to CineLog: users can save films they intend to watch (
 6. Repeat step 3 with a `film_id` that doesn't exist — expect a `FilmNotFoundError` rather than a raw database error.
 7. Run the automated test suite for full coverage: `pytest tests/ -v` (8 tests, all passing).
 
+## Stretch Goals
+
+### remove_from_watchlist()
+
+**What I did:** Added `remove_from_watchlist(user_id, film_id)` to `services/watchlist_service.py`, following the exact pattern `remove_from_collection()` uses in `services/collection_service.py`: look up the entry by `(user_id, film_id)`, and if it doesn't exist, raise a new `NotInWatchlistError` instead of silently no-op'ing or letting a `None.delete()` blow up. If it exists, delete it and commit. I also added `DELETE /watchlist/<user_id>/remove` to `routes/watchlist/watchlist.py` (body: `{"film_id": "<uuid>"}`), mirroring `DELETE /collection/<user_id>/remove` — it returns `200` with a confirmation message on success and `404` when `NotInWatchlistError` is raised.
+
+**Test:** `test_remove_from_watchlist_deletes_entry` (happy path — the entry is gone from the DB afterward) and `test_remove_from_watchlist_not_present_raises` (removing a film that was never added raises `NotInWatchlistError`), both in `tests/test_watchlist.py`.
+
+### Second test — user isolation
+
+Beyond the happy-path/duplicate/nonexistent-film tests required by Comment 3, I added `test_get_watchlist_excludes_other_users_entries`. I chose this edge case because all of the Comment-3-required tests operate on a single user, so none of them can tell the difference between "the query correctly filtered to this user" and "the query returned every row in the table" — a missing or wrong `user_id` filter in `get_watchlist()` would pass all of them anyway. Two different users saving the same film and each seeing only their own entry is the smallest scenario that actually exercises that filter, so it's the case most likely to catch a real regression the other tests can't.
+
+### Visibility toggle endpoint
+
+**What I did:** Added `set_watchlist_visibility(user_id, film_id, public=None)` to `services/watchlist_service.py` and wired it up at `PATCH /watchlist/<user_id>/visibility` (body: `{"film_id": "<uuid>", "public": <bool>}`).
+
+The `public` parameter is optional. When a caller passes an explicit boolean (`true`/`false`), the entry's visibility is set to exactly that value. When `public` is omitted from the body, the function defaults to **toggling** the entry's current visibility (`not entry.public`) rather than requiring the caller to first fetch the current value just to flip it. A caller who wants a specific state (e.g. a "make private" button) sends `{"film_id": "..."}` with `"public": false`; a caller who just wants a "toggle visibility" button on an entry can send `{"film_id": "..."}` with no `public` key at all. On success the endpoint returns the updated entry (`200`); if the film isn't on the user's watchlist it returns `404` via `NotInWatchlistError`.
+
+**Test:** `test_set_watchlist_visibility_toggles_by_default` (no `public` argument flips the value, twice, back to the original) and `test_set_watchlist_visibility_sets_explicit_value` (an explicit `public=False` sets that value and is idempotent on repeat), both in `tests/test_watchlist.py`.
+
 ### git log --oneline
 `git log --oneline main..feature/watchlist` — 14 commits, all conventional
 format, no merge commits (a 15th commit, this one embedding the screenshot,
