@@ -91,3 +91,9 @@ Adds a watchlist feature to CineLog: users can save films they intend to watch (
 5. Repeat step 3 with the same `film_id` — expect the request to fail (`AlreadyInWatchlistError`) rather than creating a duplicate row.
 6. Repeat step 3 with a `film_id` that doesn't exist — expect a `FilmNotFoundError` rather than a raw database error.
 7. Run the automated test suite for full coverage: `pytest tests/ -v` (8 tests, all passing).
+
+### git log --oneline
+`git log --oneline main..feature/watchlist` — 14 commits, all conventional
+format, no merge commits:
+
+![git log --oneline showing 14 conventional commits on feature/watchlist](assets/git-log-screenshot.png)
