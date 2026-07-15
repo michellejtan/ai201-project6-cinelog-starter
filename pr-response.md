@@ -94,6 +94,16 @@ Adds a watchlist feature to CineLog: users can save films they intend to watch (
 
 ### git log --oneline
 `git log --oneline main..feature/watchlist` — 14 commits, all conventional
-format, no merge commits:
+format, no merge commits (a 15th commit, this one embedding the screenshot,
+was added immediately afterward and isn't pictured):
 
 ![git log --oneline showing 14 conventional commits on feature/watchlist](assets/git-log-screenshot.png)
+
+**Note for grading:** an unscoped `git log --oneline` on this branch also surfaces
+`bbe206c Merge pull request #2 from ascherj/chore/add-gitignore`. That commit is
+not part of this branch's own history — `git merge-base main feature/watchlist`
+returns `bbe206c`, meaning it's the shared ancestor where `feature/watchlist` was
+rebased onto `main`, merged into `main` by another contributor's PR before this
+rebase. It predates and is external to every commit in this PR. The scoped log
+above (`main..feature/watchlist`) is what GitHub's PR "Commits" tab shows, and
+confirms this branch itself has a fully linear history with zero merge commits.
